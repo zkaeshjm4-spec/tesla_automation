@@ -1,0 +1,19 @@
+# Node / Next.js
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+.vercel
+
+# Python & Chrome Profiles
+__pycache__/
+*.py[cod]
+*$py.class
+chrome_profile/
+chrome_profile_real/
+storage_state.json
+automation_log.txt
+automation_err.txt
+
+# System
+.DS_Store
+Thumbs.db

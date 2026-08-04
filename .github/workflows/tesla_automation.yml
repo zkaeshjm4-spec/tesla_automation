@@ -1,0 +1,54 @@
+name: Tesla Fleet Payment Automation
+
+on:
+  schedule:
+    # Run daily at 08:00 UTC (Adjust as needed)
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual dashboard trigger'
+  repository_dispatch:
+    types: [trigger-tesla-automation]
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+
+      - name: Install Playwright Browsers
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Run Tesla Automation Script
+        env:
+          CI: 'true'
+          HEADLESS: 'true'
+          TESLA_STORAGE_STATE: ${{ secrets.TESLA_STORAGE_STATE }}
+        run: |
+          python tesla_fleet_automation.py --ci
+
+      - name: Upload Run Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesla-automation-report
+          path: |
+            run_summary.json
+            execution_report.md

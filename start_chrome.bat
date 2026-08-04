@@ -1,0 +1,6 @@
+@echo off
+echo Closing any leftover automation Chrome...
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { $_.CommandLine -match 'chrome_profile_real' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+timeout /t 2 /nobreak >nul
+echo Starting automation Chrome with remote debugging...
+start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="D:\coding projects\tesla automation\chrome_profile_real"
