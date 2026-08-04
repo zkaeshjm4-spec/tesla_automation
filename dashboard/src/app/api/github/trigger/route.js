@@ -14,25 +14,47 @@ export async function POST(req) {
       );
     }
 
-    const dispatchUrl = `https://api.github.com/repos/${owner}/${repo}/dispatches`;
-    const response = await fetch(dispatchUrl, {
+    const headers = {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': `Bearer ${pat}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    };
+
+    // 1. Try workflow_dispatch API first
+    const workflowDispatchUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/tesla_automation.yml/dispatches`;
+    let response = await fetch(workflowDispatchUrl, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': `Bearer ${pat}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        event_type: 'trigger-tesla-automation',
-        client_payload: { trigger_source: 'Vercel Control Center UI' },
-      }),
+      headers,
+      body: JSON.stringify({ ref: 'main' }),
     });
+
+    // 2. Fallback to repository_dispatch API if workflow_dispatch returns 404
+    if (response.status === 404) {
+      const repoDispatchUrl = `https://api.github.com/repos/${owner}/${repo}/dispatches`;
+      response = await fetch(repoDispatchUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          event_type: 'trigger-tesla-automation',
+          client_payload: { trigger_source: 'Vercel Control Center UI' },
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
+      let customError = `GitHub API error (${response.status}): ${errorText}`;
+      
+      if (response.status === 403) {
+        customError = `🔑 GitHub PAT Scope Error (403): Your token is missing required permissions.\n` +
+          `Solution: Go to https://github.com/settings/tokens, edit your token, and make sure the 'repo' and 'workflow' checkboxes are ticked!`;
+      } else if (response.status === 404) {
+        customError = `📂 Repository / Workflow Not Found (404): Ensure your code is pushed to https://github.com/${owner}/${repo} and .github/workflows/tesla_automation.yml exists.`;
+      }
+
       return NextResponse.json(
-        { error: `GitHub API error (${response.status}): ${errorText}` },
+        { error: customError },
         { status: response.status }
       );
     }

@@ -9,11 +9,13 @@ import {
   Settings, 
   ExternalLink, 
   Zap,
-  Lock
+  Lock,
+  MonitorPlay,
+  Globe
 } from 'lucide-react';
 
 export default function Dashboard() {
-  // Settings state (Defaults to repo owner/name, can be overridden)
+  // Settings state (Defaults to repo owner/name)
   const [owner, setOwner] = useState('zkaeshjm4-spec');
   const [repo, setRepo] = useState('tesla_automation');
   const [pat, setPat] = useState('');
@@ -23,6 +25,7 @@ export default function Dashboard() {
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [triggerMessage, setTriggerMessage] = useState(null);
+  const [visualRunning, setVisualRunning] = useState(false);
   
   // Secret modal state
   const [showSecretModal, setShowSecretModal] = useState(false);
@@ -30,6 +33,8 @@ export default function Dashboard() {
   const [storageStateJson, setStorageStateJson] = useState('');
   const [syncingSecret, setSyncingSecret] = useState(false);
   const [secretMessage, setSecretMessage] = useState(null);
+
+  const teslaFleetUrl = "https://www.tesla.com/teslaaccount/business/fleets/landing/1d567283-8292-40a7-8bbe-224aa88e85f8";
 
   // Load saved settings or fetch automatically via server env
   useEffect(() => {
@@ -63,10 +68,6 @@ export default function Dashboard() {
       const data = await res.json();
       if (res.ok) {
         setRuns(data.runs || []);
-      } else {
-        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
-          setShowSettingsModal(true);
-        }
       }
     } catch (err) {
       console.error('Failed to fetch runs:', err);
@@ -75,6 +76,37 @@ export default function Dashboard() {
     }
   };
 
+  // 1. VISUAL LOCAL AUTOMATION: Opens Tesla in New Tab & Spawns Local Playwright Automation
+  const runVisualLocalAutomation = async () => {
+    setVisualRunning(true);
+    setTriggerMessage(null);
+
+    // Open Tesla Fleet landing page in a new browser tab immediately
+    window.open(teslaFleetUrl, '_blank');
+
+    try {
+      const res = await fetch('/api/local/run', { method: 'POST' });
+      const data = await res.json();
+
+      if (res.ok) {
+        setTriggerMessage({ 
+          type: 'success', 
+          text: '🖥️ Tesla tab opened! Visual automation is running live in your Chrome window...' 
+        });
+      } else {
+        setTriggerMessage({ 
+          type: 'error', 
+          text: data.error || 'Could not start visual local process.' 
+        });
+      }
+    } catch (err) {
+      setTriggerMessage({ type: 'error', text: err.message });
+    } finally {
+      setVisualRunning(false);
+    }
+  };
+
+  // 2. CLOUD GITHUB ACTIONS TRIGGER
   const triggerWorkflow = async () => {
     setTriggering(true);
     setTriggerMessage(null);
@@ -88,12 +120,9 @@ export default function Dashboard() {
 
       const data = await res.json();
       if (res.ok) {
-        setTriggerMessage({ type: 'success', text: '⚡ Workflow triggered! Starting on GitHub Actions...' });
+        setTriggerMessage({ type: 'success', text: '⚡ Cloud workflow triggered on GitHub Actions!' });
         setTimeout(() => fetchRuns(), 3000);
       } else {
-        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
-          setShowSettingsModal(true);
-        }
         setTriggerMessage({ type: 'error', text: data.error || 'Failed to trigger workflow.' });
       }
     } catch (err) {
@@ -124,9 +153,6 @@ export default function Dashboard() {
         setSecretMessage({ type: 'success', text: '✅ Tesla Session updated in GitHub Secrets successfully!' });
         setTimeout(() => setShowSecretModal(false), 2000);
       } else {
-        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
-          setShowSettingsModal(true);
-        }
         setSecretMessage({ type: 'error', text: data.error || 'Failed to update secret.' });
       }
     } catch (err) {
@@ -152,7 +178,7 @@ export default function Dashboard() {
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.5px' }}>Tesla Automation Control Center</h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            GitHub Actions + Vercel Fleet Driver Payment Automation
+            Visual Local Automation & Cloud GitHub Actions Driver Payment System
           </p>
         </div>
 
@@ -168,65 +194,79 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Grid Overview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+      {/* Main Action Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', marginBottom: '32px' }}>
         
-        {/* Trigger Automation Card */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {/* Visual Live Local Automation Card */}
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(232, 33, 39, 0.4)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Zap size={22} color="var(--accent-red)" />
-                <h3 style={{ fontSize: '1.1rem' }}>Run Automation</h3>
+                <MonitorPlay size={24} color="var(--accent-red)" />
+                <h3 style={{ fontSize: '1.15rem' }}>Run Visual Automation</h3>
               </div>
-              <span className="badge badge-running">GitHub Actions</span>
+              <span className="badge badge-success">Live Visual</span>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-              Execute Playwright driver payment responsibility automation on GitHub Actions runners immediately.
+              Opens Tesla Fleet portal in a <strong>new tab</strong> and executes visual Playwright automation on screen so you can watch row traversal and driver payment updates live.
             </p>
           </div>
 
           <div>
             <button 
               className="btn-primary" 
-              onClick={triggerWorkflow} 
-              disabled={triggering || isLatestRunRunning}
-              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={runVisualLocalAutomation} 
+              disabled={visualRunning}
+              style={{ width: '100%', justifyContent: 'center', fontSize: '0.95rem', padding: '14px 20px' }}
             >
-              <Play size={18} fill="currentColor" />
-              {triggering ? 'Launching Workflow...' : 'Trigger Automation Now'}
+              <Globe size={18} />
+              {visualRunning ? 'Opening Tab & Automating...' : 'Open Tesla Tab & Run Visual Automation'}
             </button>
-            
-            {triggerMessage && (
-              <div style={{ 
-                marginTop: '14px', 
-                fontSize: '0.85rem', 
-                padding: '10px 14px', 
-                borderRadius: '8px',
-                background: triggerMessage.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                color: triggerMessage.type === 'success' ? '#34d399' : '#f87171',
-                border: `1px solid ${triggerMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-              }}>
-                {triggerMessage.text}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Auth / Session State Card */}
+        {/* Cloud GitHub Actions Automation Card */}
         <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Key size={22} color="var(--accent-yellow)" />
-                <h3 style={{ fontSize: '1.1rem' }}>Tesla Session Auth</h3>
+                <Zap size={24} color="var(--accent-blue)" />
+                <h3 style={{ fontSize: '1.15rem' }}>Trigger Cloud Action</h3>
+              </div>
+              <span className="badge badge-running">3-Hour Cron</span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
+              Launches headless Python automation in the cloud on GitHub Actions runners (Also runs automatically every 3 hours).
+            </p>
+          </div>
+
+          <div>
+            <button 
+              className="btn-secondary" 
+              onClick={triggerWorkflow} 
+              disabled={triggering || isLatestRunRunning}
+              style={{ width: '100%', justifyContent: 'center', fontSize: '0.95rem', padding: '14px 20px' }}
+            >
+              <Play size={18} fill="currentColor" />
+              {triggering ? 'Launching Cloud Workflow...' : 'Trigger Cloud Run on GitHub'}
+            </button>
+          </div>
+        </div>
+
+        {/* Tesla Auth / Session State Card */}
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Key size={24} color="var(--accent-yellow)" />
+                <h3 style={{ fontSize: '1.15rem' }}>Tesla Session Manager</h3>
               </div>
               <span className={isLatestRunFailed ? "badge badge-failed" : "badge badge-success"}>
                 {isLatestRunFailed ? 'Session Alert' : 'Session Ready'}
               </span>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-              Manages your Tesla account SSO authentication state (`storage_state.json`) synced to GitHub Repository Secrets.
+              Manages your Tesla SSO session cookies (`storage_state.json`) synced with GitHub Repository Secrets.
             </p>
           </div>
 
@@ -234,62 +274,32 @@ export default function Dashboard() {
             <button 
               className="btn-secondary" 
               onClick={() => setShowSecretModal(true)}
-              style={{ width: '100%', justifyContent: 'center' }}
+              style={{ width: '100%', justifyContent: 'center', fontSize: '0.95rem', padding: '14px 20px' }}
             >
               <Lock size={16} />
-              Re-authenticate / Sync Cookies
+              Re-authenticate / Sync Secret
             </button>
           </div>
         </div>
 
-        {/* Latest Run Status Card */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Clock size={22} color="var(--accent-blue)" />
-                <h3 style={{ fontSize: '1.1rem' }}>Latest Execution</h3>
-              </div>
-              {latestRun && (
-                <span className={`badge ${
-                  isLatestRunRunning ? 'badge-running' : isLatestRunSuccess ? 'badge-success' : 'badge-failed'
-                }`}>
-                  {latestRun.status === 'in_progress' ? 'Running' : latestRun.conclusion || latestRun.status}
-                </span>
-              )}
-            </div>
-
-            {latestRun ? (
-              <div>
-                <div style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '6px' }}>
-                  Run #{latestRun.run_number} ({latestRun.event})
-                </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Started: {new Date(latestRun.created_at).toLocaleString()}
-                </div>
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>No recent workflow runs found.</p>
-            )}
-          </div>
-
-          {latestRun && (
-            <div style={{ marginTop: '16px' }}>
-              <a 
-                href={latestRun.html_url} 
-                target="_blank" 
-                rel="noreferrer"
-                className="btn-secondary"
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem' }}
-              >
-                View Logs on GitHub <ExternalLink size={14} />
-              </a>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Workflow Run History Table */}
+      {/* Global Status Message */}
+      {triggerMessage && (
+        <div style={{ 
+          marginBottom: '28px', 
+          fontSize: '0.9rem', 
+          padding: '14px 18px', 
+          borderRadius: '12px',
+          background: triggerMessage.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+          color: triggerMessage.type === 'success' ? '#34d399' : '#f87171',
+          border: `1px solid ${triggerMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+        }}>
+          {triggerMessage.text}
+        </div>
+      )}
+
+      {/* Execution History Table */}
       <div className="glass-panel" style={{ padding: '28px', marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Execution History</h2>
@@ -304,7 +314,7 @@ export default function Dashboard() {
           </div>
         ) : runs.length === 0 ? (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No workflow runs recorded yet. Click <strong>Trigger Automation Now</strong> to start!
+            No workflow runs recorded yet. Click <strong>Run Visual Automation</strong> or <strong>Trigger Cloud Run</strong> to start!
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -369,7 +379,7 @@ export default function Dashboard() {
             </div>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>
-              If your Tesla session expires or logs out, run your local script or export your browser state (`storage_state.json`), paste the JSON below, and click <strong>Sync Session Secret</strong>.
+              If your Tesla session expires or logs out, run visual local automation or export your browser state (`storage_state.json`), paste the JSON below, and click <strong>Sync Session Secret</strong>.
             </p>
 
             <textarea 
@@ -421,7 +431,7 @@ export default function Dashboard() {
             </div>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-              You can set <code>GITHUB_PAT</code> in your Vercel Environment Variables, or enter your token below:
+              Enter your GitHub PAT token or configure <code>GITHUB_PAT</code> in environment variables:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
@@ -448,7 +458,7 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub PAT Token (Optional if GITHUB_PAT env var is set on Vercel)</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub PAT Token</label>
                 <input 
                   type="password" 
                   className="input-field" 
