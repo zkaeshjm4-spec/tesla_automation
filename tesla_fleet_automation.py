@@ -247,7 +247,9 @@ class OrchestratorAgent:
     def run(self, ci_mode=False):
         print("[Orchestrator] Initializing Multi-Agent Framework...")
         is_ci = ci_mode or os.environ.get("CI") == "true" or os.environ.get("HEADLESS") == "true"
-        
+        browser = None
+        context = None
+
         try:
             with sync_playwright() as p:
                 if is_ci:
@@ -345,6 +347,30 @@ class OrchestratorAgent:
         except Exception as e:
             print(f"[Orchestrator] Failed to connect or execute. Error: {e}")
             self.generate_report(error=str(e))
+        finally:
+            try:
+                if context:
+                    context.close()
+            except Exception:
+                pass
+            try:
+                if browser:
+                    browser.close()
+            except Exception:
+                pass
+            if not is_ci:
+                print("[Orchestrator] Closing automation Chrome...")
+                try:
+                    import subprocess
+                    kill_cmd = (
+                        "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+                        "Where-Object { $_.CommandLine -match 'chrome_profile_real' } | "
+                        "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+                    )
+                    subprocess.run(["powershell", "-NoProfile", "-Command", kill_cmd], timeout=30)
+                    print("[Orchestrator] Automation Chrome fully closed.")
+                except Exception as ex:
+                    print(f"[Orchestrator] Warning: could not kill automation Chrome: {ex}")
 
     def generate_report(self, error=None, status_code=None):
         import json
