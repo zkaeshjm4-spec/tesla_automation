@@ -5,24 +5,17 @@ import {
   Play, 
   RefreshCw, 
   Key, 
-  CheckCircle2, 
-  XCircle, 
   Clock, 
   Settings, 
-  ShieldCheck, 
-  ShieldAlert, 
   ExternalLink, 
-  Terminal,
-  FileCode,
   Zap,
-  Lock,
-  ChevronRight
+  Lock
 } from 'lucide-react';
 
 export default function Dashboard() {
-  // Settings state (Persisted in localStorage)
-  const [owner, setOwner] = useState('');
-  const [repo, setRepo] = useState('');
+  // Settings state (Defaults to repo owner/name, can be overridden)
+  const [owner, setOwner] = useState('zkaeshjm4-spec');
+  const [repo, setRepo] = useState('tesla_automation');
   const [pat, setPat] = useState('');
   
   // App state
@@ -38,21 +31,17 @@ export default function Dashboard() {
   const [syncingSecret, setSyncingSecret] = useState(false);
   const [secretMessage, setSecretMessage] = useState(null);
 
-  // Load settings on mount
+  // Load saved settings or fetch automatically via server env
   useEffect(() => {
-    const savedOwner = localStorage.getItem('gh_owner') || '';
-    const savedRepo = localStorage.getItem('gh_repo') || '';
+    const savedOwner = localStorage.getItem('gh_owner') || 'zkaeshjm4-spec';
+    const savedRepo = localStorage.getItem('gh_repo') || 'tesla_automation';
     const savedPat = localStorage.getItem('gh_pat') || '';
 
     setOwner(savedOwner);
     setRepo(savedRepo);
     setPat(savedPat);
 
-    if (savedOwner && savedRepo && savedPat) {
-      fetchRuns(savedOwner, savedRepo, savedPat);
-    } else {
-      setShowSettingsModal(true);
-    }
+    fetchRuns(savedOwner, savedRepo, savedPat);
   }, []);
 
   const saveSettings = (newOwner, newRepo, newPat) => {
@@ -67,15 +56,17 @@ export default function Dashboard() {
   };
 
   const fetchRuns = async (o = owner, r = repo, p = pat) => {
-    if (!o || !r || !p) return;
     setLoadingRuns(true);
     try {
-      const res = await fetch(`/api/github/runs?owner=${encodeURIComponent(o)}&repo=${encodeURIComponent(r)}&pat=${encodeURIComponent(p)}`);
+      const url = `/api/github/runs?owner=${encodeURIComponent(o)}&repo=${encodeURIComponent(r)}${p ? `&pat=${encodeURIComponent(p)}` : ''}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) {
         setRuns(data.runs || []);
       } else {
-        console.error(data.error);
+        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
+          setShowSettingsModal(true);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch runs:', err);
@@ -85,11 +76,6 @@ export default function Dashboard() {
   };
 
   const triggerWorkflow = async () => {
-    if (!owner || !repo || !pat) {
-      setShowSettingsModal(true);
-      return;
-    }
-
     setTriggering(true);
     setTriggerMessage(null);
 
@@ -105,6 +91,9 @@ export default function Dashboard() {
         setTriggerMessage({ type: 'success', text: '⚡ Workflow triggered! Starting on GitHub Actions...' });
         setTimeout(() => fetchRuns(), 3000);
       } else {
+        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
+          setShowSettingsModal(true);
+        }
         setTriggerMessage({ type: 'error', text: data.error || 'Failed to trigger workflow.' });
       }
     } catch (err) {
@@ -135,6 +124,9 @@ export default function Dashboard() {
         setSecretMessage({ type: 'success', text: '✅ Tesla Session updated in GitHub Secrets successfully!' });
         setTimeout(() => setShowSecretModal(false), 2000);
       } else {
+        if (data.error && data.error.includes('Missing GitHub Personal Access Token')) {
+          setShowSettingsModal(true);
+        }
         setSecretMessage({ type: 'error', text: data.error || 'Failed to update secret.' });
       }
     } catch (err) {
@@ -187,7 +179,7 @@ export default function Dashboard() {
                 <Zap size={22} color="var(--accent-red)" />
                 <h3 style={{ fontSize: '1.1rem' }}>Run Automation</h3>
               </div>
-              <span className="badge badge-running">Cloud Trigger</span>
+              <span className="badge badge-running">GitHub Actions</span>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
               Execute Playwright driver payment responsibility automation on GitHub Actions runners immediately.
@@ -302,7 +294,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Execution History</h2>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Repo: {owner}/{repo || 'Not configured'}
+            Repo: {owner}/{repo}
           </span>
         </div>
 
@@ -429,16 +421,16 @@ export default function Dashboard() {
             </div>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-              Enter your GitHub repository details and Personal Access Token (PAT) so Vercel can trigger your Actions workflows.
+              You can set <code>GITHUB_PAT</code> in your Vercel Environment Variables, or enter your token below:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub Owner (Username or Org)</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub Owner</label>
                 <input 
                   type="text" 
                   className="input-field" 
-                  placeholder="e.g. myusername" 
+                  placeholder="zkaeshjm4-spec" 
                   value={owner} 
                   onChange={(e) => setOwner(e.target.value)} 
                 />
@@ -449,14 +441,14 @@ export default function Dashboard() {
                 <input 
                   type="text" 
                   className="input-field" 
-                  placeholder="e.g. tesla-automation" 
+                  placeholder="tesla_automation" 
                   value={repo} 
                   onChange={(e) => setRepo(e.target.value)} 
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub Personal Access Token (PAT with repo & workflow scopes)</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '6px' }}>GitHub PAT Token (Optional if GITHUB_PAT env var is set on Vercel)</label>
                 <input 
                   type="password" 
                   className="input-field" 
@@ -471,10 +463,9 @@ export default function Dashboard() {
               <button 
                 className="btn-primary" 
                 onClick={() => saveSettings(owner, repo, pat)}
-                disabled={!owner || !repo || !pat}
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                Save Settings & Connect
+                Save & Continue
               </button>
             </div>
           </div>

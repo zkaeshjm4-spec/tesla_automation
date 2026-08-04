@@ -2,16 +2,18 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    const { owner, repo, pat } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const owner = body.owner || process.env.GITHUB_OWNER || 'zkaeshjm4-spec';
+    const repo = body.repo || process.env.GITHUB_REPO || 'tesla_automation';
+    const pat = body.pat || process.env.GITHUB_PAT;
 
-    if (!owner || !repo || !pat) {
+    if (!pat) {
       return NextResponse.json(
-        { error: 'Missing GitHub Owner, Repo, or Personal Access Token (PAT).' },
+        { error: 'Missing GitHub Personal Access Token. Set GITHUB_PAT in Vercel environment variables or enter it in settings.' },
         { status: 400 }
       );
     }
 
-    // Try repository_dispatch first
     const dispatchUrl = `https://api.github.com/repos/${owner}/${repo}/dispatches`;
     const response = await fetch(dispatchUrl, {
       method: 'POST',

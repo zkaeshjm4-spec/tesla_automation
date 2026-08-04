@@ -3,11 +3,22 @@ import sealedBox from 'tweetnacl-sealedbox-js';
 
 export async function POST(req) {
   try {
-    const { owner, repo, pat, secretValue } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const owner = body.owner || process.env.GITHUB_OWNER || 'zkaeshjm4-spec';
+    const repo = body.repo || process.env.GITHUB_REPO || 'tesla_automation';
+    const pat = body.pat || process.env.GITHUB_PAT;
+    const secretValue = body.secretValue;
 
-    if (!owner || !repo || !pat || !secretValue) {
+    if (!secretValue) {
       return NextResponse.json(
-        { error: 'Missing owner, repo, pat, or secretValue.' },
+        { error: 'Missing secretValue.' },
+        { status: 400 }
+      );
+    }
+
+    if (!pat) {
+      return NextResponse.json(
+        { error: 'Missing GitHub Personal Access Token. Set GITHUB_PAT in Vercel environment variables or enter it in settings.' },
         { status: 400 }
       );
     }
@@ -32,7 +43,7 @@ export async function POST(req) {
 
     const { key_id, key } = await pkResponse.json();
 
-    // 2. Encrypt secretValue using sealedBox (compatible with libsodium / GitHub Secrets)
+    // 2. Encrypt secretValue using sealedBox
     const messageBytes = Buffer.from(secretValue);
     const keyBytes = Buffer.from(key, 'base64');
     const encryptedBytes = sealedBox.seal(messageBytes, keyBytes);

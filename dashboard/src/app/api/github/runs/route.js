@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const owner = searchParams.get('owner');
-    const repo = searchParams.get('repo');
-    const pat = searchParams.get('pat');
+    const owner = searchParams.get('owner') || process.env.GITHUB_OWNER || 'zkaeshjm4-spec';
+    const repo = searchParams.get('repo') || process.env.GITHUB_REPO || 'tesla_automation';
+    const pat = searchParams.get('pat') || process.env.GITHUB_PAT;
 
-    if (!owner || !repo || !pat) {
+    if (!pat) {
       return NextResponse.json(
-        { error: 'Missing owner, repo, or pat parameters.' },
+        { error: 'Missing GitHub Personal Access Token. Set GITHUB_PAT in Vercel environment variables or enter it in settings.' },
         { status: 400 }
       );
     }
@@ -36,8 +36,8 @@ export async function GET(req) {
     const runs = (data.workflow_runs || []).map((run) => ({
       id: run.id,
       name: run.name,
-      status: run.status, // queued, in_progress, completed
-      conclusion: run.conclusion, // success, failure, cancelled
+      status: run.status,
+      conclusion: run.conclusion,
       event: run.event,
       html_url: run.html_url,
       created_at: run.created_at,
@@ -46,7 +46,7 @@ export async function GET(req) {
       actor: run.actor?.login || 'Automated',
     }));
 
-    return NextResponse.json({ runs, total: data.total_count });
+    return NextResponse.json({ runs, total: data.total_count, owner, repo });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
