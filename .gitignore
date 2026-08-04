@@ -19,3 +19,10 @@ automation_err.txt
 # System
 .DS_Store
 Thumbs.db
+
+# PyInstaller build artifacts
+dist/
+build/
+*.spec
+selftest_result.txt
+app_error.log
