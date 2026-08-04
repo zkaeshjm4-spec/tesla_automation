@@ -2,6 +2,8 @@
 dashboard/node_modules/
 dashboard/.next/
 dashboard/out/
+dashboard/.env.local
+.env.local
 .vercel
 
 # Python & Chrome Profiles
