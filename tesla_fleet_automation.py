@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PlaywrightTimeoutError
 
@@ -263,7 +264,7 @@ class OrchestratorAgent:
                         msg = "No storage_state.json found. Please authenticate and upload Tesla session state via Vercel UI."
                         print(f"[Orchestrator] [SESSION_EXPIRED] {msg}")
                         self.generate_report(error=msg, status_code="LOGGED_OUT")
-                        return
+                        sys.exit(1)
 
                     browser = p.chromium.launch(headless=True)
                     context = browser.new_context(storage_state=storage_state_path)
@@ -279,7 +280,7 @@ class OrchestratorAgent:
                         msg = "Tesla session expired or invalid. Re-authentication required in Vercel UI."
                         print(f"[Orchestrator] [SESSION_EXPIRED] {msg}")
                         self.generate_report(error=msg, status_code="LOGGED_OUT")
-                        return
+                        sys.exit(1)
                 else:
                     print("[Orchestrator] Preparing your real Chrome profile copy (one-time)...")
                     real_profile = r"C:\Users\HP\AppData\Local\Google\Chrome\User Data"
